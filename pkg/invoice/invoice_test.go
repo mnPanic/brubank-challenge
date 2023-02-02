@@ -39,67 +39,47 @@ func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {
 		Date:             "2022-09-05T20:52:44Z",
 	}
 
-	mockFinder := user.NewMockFinder(
-		map[user.PhoneNumber]user.User{
-			testUser.Phone: testUser,
-		},
-	)
-
 	result, err := invoice.Generate(
-		mockFinder,
+		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		"2022-01-01", "2023-12-31",
 		[]invoice.Call{firstInternationalCall, secondInternationalCall},
 	)
 	require.NoError(t, err)
 
-	expected := invoice.Invoice{
-		User: invoice.InvoiceUser{
-			Address: testUser.Address,
-			Name:    testUser.Name,
-			Phone:   string(testUser.Phone),
+	assertInvoiceIsExpected(t, result, testUser,
+		[]expectedCall{
+			{call: firstInternationalCall, cost: float64(firstInternationalCall.Duration)},
+			{call: secondInternationalCall, cost: float64(secondInternationalCall.Duration)},
 		},
-		Calls: []invoice.InvoiceCall{
-			{
-				DestinationPhone: firstInternationalCall.DestinationPhone,
-				Duration:         firstInternationalCall.Duration,
-				Timestamp:        firstInternationalCall.Date,
-				Amount:           float64(firstInternationalCall.Duration),
-			},
-			{
-				DestinationPhone: secondInternationalCall.DestinationPhone,
-				Duration:         secondInternationalCall.Duration,
-				Timestamp:        secondInternationalCall.Date,
-				Amount:           float64(secondInternationalCall.Duration),
-			},
+		expectedTotalSeconds{
+			international: firstInternationalCall.Duration + secondInternationalCall.Duration,
+			national:      0,
+			friends:       0,
 		},
-		TotalInternationalSeconds: firstInternationalCall.Duration + secondInternationalCall.Duration,
-		TotalNationalSeconds:      0,
-		TotalFriendsSeconds:       0,
-		InvoiceTotal:              float64(firstInternationalCall.Duration) + float64(secondInternationalCall.Duration),
-	}
-
-	assert.Equal(t, expected, result)
+	)
 }
 
-func TestFriendsAreNationalCalls(t *testing.T) {
+func TestCallsToFriends(t *testing.T) {
 	// When generating an invoice that has a call to a friend, it should be also
-	// counted as a national call.
+	// counted as a national or international call.
+	const (
+		nationalPhone      = "+54911111113"
+		internationalPhone = "+19911111113"
+	)
+
 	testUser := user.User{
 		Name:    "Antonio Banderas",
 		Address: "Calle Falsa 123",
 		Phone:   "+54911111111",
 		Friends: []user.PhoneNumber{
-			"+54911111113",
+			nationalPhone,      // National friend
+			internationalPhone, // International friend
 		},
 	}
 
-	mockFinder := user.NewMockFinder(
-		map[user.PhoneNumber]user.User{
-			testUser.Phone: testUser,
-		},
-	)
-
+	// We add national and international calls to strangers to verify not all
+	// are taken as friends
 	nationalCall := invoice.Call{
 		DestinationPhone: "+54911111112",
 		SourcePhone:      string(testUser.Phone),
@@ -107,50 +87,103 @@ func TestFriendsAreNationalCalls(t *testing.T) {
 		Date:             "2022-09-05T20:52:44Z",
 	}
 
-	friendCall := invoice.Call{
-		DestinationPhone: "+54911111113",
+	internationalCall := invoice.Call{
+		DestinationPhone: "+19911111112",
+		SourcePhone:      string(testUser.Phone),
+		Duration:         60,
+		Date:             "2022-09-05T20:52:44Z",
+	}
+
+	nationalFriendCall := invoice.Call{
+		DestinationPhone: nationalPhone,
+		SourcePhone:      string(testUser.Phone),
+		Duration:         40,
+		Date:             "2022-09-05T20:52:44Z",
+	}
+
+	internationalFriendCall := invoice.Call{
+		DestinationPhone: internationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
 		Date:             "2022-09-05T20:52:44Z",
 	}
 
 	result, err := invoice.Generate(
-		mockFinder,
+		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		"2022-01-01", "2023-12-31",
-		[]invoice.Call{nationalCall, friendCall},
+		[]invoice.Call{
+			nationalCall,
+			internationalFriendCall,
+			nationalFriendCall,
+			internationalCall,
+		},
 	)
 	require.NoError(t, err)
 
-	expected := invoice.Invoice{
-		User: invoice.InvoiceUser{
-			Address: testUser.Address,
-			Name:    testUser.Name,
-			Phone:   string(testUser.Phone),
+	assertInvoiceIsExpected(t, result, testUser,
+		[]expectedCall{
+			{call: nationalCall, cost: 2.5},
+			{call: internationalFriendCall, cost: 0},
+			{call: nationalFriendCall, cost: 0},
+			{call: internationalCall, cost: float64(internationalCall.Duration)},
 		},
-		Calls: []invoice.InvoiceCall{
-			{
-				DestinationPhone: nationalCall.DestinationPhone,
-				Duration:         nationalCall.Duration,
-				Timestamp:        nationalCall.Date,
-				Amount:           2.5,
-			},
-			{
-				DestinationPhone: friendCall.DestinationPhone,
-				Duration:         friendCall.Duration,
-				Timestamp:        friendCall.Date,
-				Amount:           0,
-			},
+		// Friend call seconds are counted double: as national/international and
+		// friends
+		expectedTotalSeconds{
+			national:      nationalCall.Duration + nationalFriendCall.Duration,
+			international: internationalFriendCall.Duration + internationalCall.Duration,
+			friends:       nationalFriendCall.Duration + internationalFriendCall.Duration,
 		},
-		TotalInternationalSeconds: 0,
-		// Friend call seconds are counted double: in national calls and friend
-		// calls
-		TotalNationalSeconds: nationalCall.Duration + friendCall.Duration,
-		TotalFriendsSeconds:  friendCall.Duration,
-		InvoiceTotal:         2.5,
+	)
+}
+
+type expectedCall struct {
+	call invoice.Call
+	cost float64
+}
+
+type expectedTotalSeconds struct {
+	international int
+	national      int
+	friends       int
+}
+
+// assertInvoiceIsExpected asserts that the invoice has the expected user and
+// the calls are in the specified order along with their costs and summed
+// durations. The expected total is always the sum of all expected costs.
+//
+// Nota de diseño: Esta función la hice para alivianar tener que construir el
+// struct de Invoice en todos los tests, que terminaba repitiendo mucho código.
+func assertInvoiceIsExpected(t *testing.T, actualInvoice invoice.Invoice, expectedUser user.User, expectedCalls []expectedCall, expectedSeconds expectedTotalSeconds) {
+	var expectedInvoiceCalls []invoice.InvoiceCall
+	var expectedTotal float64
+
+	for _, expectedCall := range expectedCalls {
+		expectedInvoiceCalls = append(expectedInvoiceCalls, invoice.InvoiceCall{
+			DestinationPhone: expectedCall.call.DestinationPhone,
+			Duration:         expectedCall.call.Duration,
+			Timestamp:        expectedCall.call.Date,
+			Amount:           expectedCall.cost,
+		})
+
+		expectedTotal += expectedCall.cost
 	}
 
-	assert.Equal(t, expected, result)
+	expectedInvoice := invoice.Invoice{
+		User: invoice.InvoiceUser{
+			Address: expectedUser.Address,
+			Name:    expectedUser.Name,
+			Phone:   string(expectedUser.Phone),
+		},
+		Calls:                     expectedInvoiceCalls,
+		TotalInternationalSeconds: expectedSeconds.international,
+		TotalNationalSeconds:      expectedSeconds.national,
+		TotalFriendsSeconds:       expectedSeconds.friends,
+		InvoiceTotal:              expectedTotal,
+	}
+
+	assert.Equal(t, expectedInvoice, actualInvoice)
 }
 
 func TestFriendCallsAreFreeUpToTen(t *testing.T) {
@@ -164,12 +197,6 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 			"+54911111113",
 		},
 	}
-
-	mockFinder := user.NewMockFinder(
-		map[user.PhoneNumber]user.User{
-			testUser.Phone: testUser,
-		},
-	)
 
 	friendCall := invoice.Call{
 		DestinationPhone: "+54911111113",
@@ -186,45 +213,30 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 	}
 
 	result, err := invoice.Generate(
-		mockFinder,
+		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		"2022-01-01", "2023-12-31",
 		calls,
 	)
 	require.NoError(t, err)
 
-	var expectedCalls []invoice.InvoiceCall
+	var expectedCalls []expectedCall
 	// First ten are free
 	for i := 0; i < maxFreeFriendCalls; i++ {
-		expectedCalls = append(expectedCalls, invoice.InvoiceCall{
-			DestinationPhone: friendCall.DestinationPhone,
-			Duration:         friendCall.Duration,
-			Timestamp:        friendCall.Date,
-			Amount:           0,
-		})
+		expectedCalls = append(expectedCalls, expectedCall{call: friendCall, cost: 0})
 	}
+
 	// Last one is not
-	expectedCalls = append(expectedCalls, invoice.InvoiceCall{
-		DestinationPhone: friendCall.DestinationPhone,
-		Duration:         friendCall.Duration,
-		Timestamp:        friendCall.Date,
-		Amount:           2.5, // national call fare
+	expectedCalls = append(expectedCalls, expectedCall{
+		call: friendCall,
+		cost: 2.5, // national call fare
 	})
 
-	expected := invoice.Invoice{
-		User: invoice.InvoiceUser{
-			Address: testUser.Address,
-			Name:    testUser.Name,
-			Phone:   string(testUser.Phone),
-		},
-		Calls:                     expectedCalls,
-		TotalInternationalSeconds: 0,
+	assertInvoiceIsExpected(t, result, testUser, expectedCalls, expectedTotalSeconds{
+		international: 0,
 		// Friend call seconds are counted double: in national calls and friend
 		// calls
-		TotalNationalSeconds: friendCall.Duration * 11,
-		TotalFriendsSeconds:  friendCall.Duration * 11,
-		InvoiceTotal:         2.5,
-	}
-
-	assert.Equal(t, expected, result)
+		national: friendCall.Duration * 11,
+		friends:  friendCall.Duration * 11,
+	})
 }

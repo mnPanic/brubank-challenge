@@ -28,8 +28,12 @@ type MockFinder struct {
 	users map[PhoneNumber]User
 }
 
-func NewMockFinder(users map[PhoneNumber]User) MockFinder {
-	return MockFinder{users: users}
+func NewMockFinderForUser(usr User) MockFinder {
+	return MockFinder{
+		users: map[PhoneNumber]User{
+			usr.Phone: usr,
+		},
+	}
 }
 
 func (m MockFinder) FindByPhone(phoneNumber PhoneNumber) (User, error) {

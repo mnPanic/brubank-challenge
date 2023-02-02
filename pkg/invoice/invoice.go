@@ -41,48 +41,33 @@ type Call struct {
 // TODO: Tiene sentido que esto sea parte de call, o un modulo a parte
 func (c Call) CalculateCost(friends []user.PhoneNumber, currentFriendCalls int) float64 {
 	const maxFreeFriendCalls = 10
-	const nationalCallFare = 2.5
 	callType := c.Type(friends)
-	if callType == CallTypeFriend {
-		if currentFriendCalls < maxFreeFriendCalls {
-			return 0
-		}
 
-		// National cost
-		return nationalCallFare
+	if callType.IsFriend && currentFriendCalls < maxFreeFriendCalls {
+		return 0
 	}
 
-	if callType == CallTypeInternational {
-		return float64(c.Duration)
+	// Let it through and charge it as a call to a stranger (either national or
+	// international)
+
+	if callType.IsNational {
+		return 2.5
 	}
 
-	if callType == CallTypeNational {
-		return nationalCallFare
-	}
-
-	// TODO: unknown call type
-	return -1
+	// International
+	return float64(c.Duration)
 }
 
-type CallType int
-
-const (
-	CallTypeNational CallType = iota + 1
-	CallTypeInternational
-	CallTypeFriend
-)
+type CallType struct {
+	IsNational bool // National or international
+	IsFriend   bool // Friend or stranger
+}
 
 func (c Call) Type(friends []user.PhoneNumber) CallType {
-	if c.isNational() {
-		// Only national calls can be considered as friends
-		if c.isFriend(friends) {
-			return CallTypeFriend
-		}
-
-		return CallTypeNational
+	return CallType{
+		IsNational: c.isNational(),
+		IsFriend:   c.isFriend(friends),
 	}
-
-	return CallTypeInternational
 }
 
 // isNational returns whether the call was made to the same country (by
@@ -157,20 +142,16 @@ func Generate(
 		})
 
 		totalAmount += callCost
-		if callType == CallTypeFriend {
+		if callType.IsFriend {
 			totalFriendsSeconds += call.Duration
 			currentFriendCalls += 1
-
-			// All friend calls are national calls
-			totalNationalSeconds += call.Duration
 		}
 
-		if callType == CallTypeInternational {
+		// Also count friend calls as normal calls
+		if callType.IsNational {
+			totalNationalSeconds += call.Duration
+		} else {
 			totalInternationalSeconds += call.Duration
-		}
-
-		if callType == CallTypeNational {
-			totalNationalSeconds += call.Duration
 		}
 	}
 

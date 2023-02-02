@@ -10,6 +10,17 @@ Notas sobre el servicio de consulta de usuarios
 
 https://interview-brubank-api.herokuapp.com/users/:phoneNumber
 
+La respuesta es un JSON con el siguiente formato
+
+```json
+{
+    "address": "Address of the user",
+    "name": "Name of the user",
+    "phone_number": "+xxxxxxxxx",
+    "friends": ["+xxxxxxxxx","+xxxxxxxxx"],
+}
+```
+
 Dudas:
 
 - Qué pasa si se llama a si mismo?
@@ -23,7 +34,7 @@ Dudas:
   usuario para generar factura. Error? Ignorar?
 - Qué debería pasar con las llamadas que están fuera del período de facturación?
 - Fecha de llamadas del CSV en UTC, qué pasa si no está en ese timezone? Se
-  convierte? Se devuelve un error?
+  convierte? Se devuelve un error? Lo tengo que validar seguro
 - README en castellano seguro. Código en inglés. Pero comentarios, prefieren en
   castellano o inglés?
 
