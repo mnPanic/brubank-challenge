@@ -6,6 +6,8 @@ TODOs:
 
 - Validar formato números de teléfono
 - Llamada a si mismo
+- Mover test data de usuarios y teléfonos para evitar repetición
+- Interfaz de servicio web
 
 Notas sobre el servicio de consulta de usuarios
 
@@ -54,7 +56,13 @@ Notas de decisiones y separación de responsabilidades
   se carga el número de teléfono del usuario con un dígito menos, lo
   descartaríamos como inválido y no lo tendríamos en cuenta para su factura,
   haciendo que la empresa pierda plata.
+- Decidí hacer un CLI en lugar de un servicio web porque resultaba más fácil
+  leer el CSV.
 
 Referencias:
 
 - https://stackoverflow.com/questions/38596079/how-do-i-parse-an-iso-8601-timestamp-in-go
+
+## Uso
+
+Recomendación: instalar jq
