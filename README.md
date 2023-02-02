@@ -24,6 +24,8 @@ Dudas:
 - Qué debería pasar con las llamadas que están fuera del período de facturación?
 - Fecha de llamadas del CSV en UTC, qué pasa si no está en ese timezone? Se
   convierte? Se devuelve un error?
+- README en castellano seguro. Código en inglés. Pero comentarios, prefieren en
+  castellano o inglés?
 
 Notas de decisiones y separación de responsabilidades
 
