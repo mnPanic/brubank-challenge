@@ -44,6 +44,15 @@ Notas de decisiones y separación de responsabilidades
   un array en un JSON. Por esa razón la lógica de parseo queda del lado del
   handler.
 - Para los assertions usé testify, que es una gran lib.
+- Decidí que en caso de que haya un error de formato en un entry, que se frene
+  todo el proceso especificando el error y solicitando que se corrija. Esto me
+  parece mejor que informarlo de una forma que no frene el proceso y dar una
+  factura incompleta, ya que después esos errores se terminan ignorando y se
+  sigue con el proceso a menos que tenga *hards stops*. En este negocio, eso
+  terminaría con que tal vez le cobremos menos a los usuarios. Por ejemplo, si
+  se carga el número de teléfono del usuario con un dígito menos, lo
+  descartaríamos como inválido y no lo tendríamos en cuenta para su factura,
+  haciendo que la empresa pierda plata.
 
 Referencias:
 

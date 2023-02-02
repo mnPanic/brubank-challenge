@@ -3,7 +3,11 @@ package invoice
 import (
 	"fmt"
 	"invoice-generator/pkg/user"
+	"regexp"
 )
+
+// Phone number format: +549XXXXXXXXXX
+var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{13}`)
 
 type Invoice struct {
 	User                      InvoiceUser `json:"user"`
@@ -113,9 +117,6 @@ func Generate(
 		return Invoice{}, fmt.Errorf("finding user: %s", err)
 	}
 
-	// TODO: filtrar llamadas que no sean del usuario y no estén en el período
-	// de facturación
-
 	// TODO: Falopa para que quede más limpio: mapa indexado por CallType que
 	// tiene como valor un int.
 	var (
@@ -130,7 +131,12 @@ func Generate(
 
 	// TODO: usar make para hacer más eficiente la transformación
 	var invoiceCalls []InvoiceCall
-	for _, call := range calls {
+	for i, call := range calls {
+
+		if err := validateCall(call); err != nil {
+			return Invoice{}, fmt.Errorf("invalid call #%d: %s", i, err)
+		}
+
 		// TODO: Evitar calcular dos veces el call type
 		callType := call.Type(usr.Friends)
 		callCost := call.CalculateCost(usr.Friends, currentFriendCalls)
@@ -147,7 +153,7 @@ func Generate(
 			currentFriendCalls += 1
 		}
 
-		// Also count friend calls as normal calls
+		// Also count friend call duration for normal calls
 		if callType.IsNational {
 			totalNationalSeconds += call.Duration
 		} else {
@@ -167,4 +173,16 @@ func Generate(
 		TotalInternationalSeconds: totalInternationalSeconds,
 		InvoiceTotal:              totalAmount,
 	}, nil
+}
+
+func validateCall(call Call) error {
+	if !phoneNumberFormat.MatchString(call.DestinationPhone) {
+		return fmt.Errorf("invalid destination phone format, should match %s", phoneNumberFormat.String())
+	}
+
+	if !phoneNumberFormat.MatchString(call.SourcePhone) {
+		return fmt.Errorf("invalid source phone format, should match %s", phoneNumberFormat.String())
+	}
+
+	return nil
 }
