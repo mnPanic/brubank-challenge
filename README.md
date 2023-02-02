@@ -14,6 +14,11 @@ Dudas:
 
 - Qué pasa si se llama a si mismo?
 - Puede tener amigos internacionales o solo nacionales?
+  - Según el ejemplo, una llamada con un amigo nacional se cuenta en
+    total_national_seconds y total_friends_seconds. Como se dice que hay 3 tipos
+    de llamadas, esto me hace pensar que toda llamada de amigos es nacional
+    (sino debería haber más tipos de llamadas, las combinaciones amigo-nacional,
+    amigo-internacional, extraño-nacional, extraño-internacional)
 - Qué hacer con las llamadas que tengan un número origen que no sea el del
   usuario para generar factura. Error? Ignorar?
 - Qué debería pasar con las llamadas que están fuera del período de facturación?
@@ -26,3 +31,7 @@ Notas de decisiones y separación de responsabilidades
   un array en un JSON. Por esa razón la lógica de parseo queda del lado del
   handler.
 - Para los assertions usé testify, que es una gran lib.
+
+Referencias:
+
+- https://stackoverflow.com/questions/38596079/how-do-i-parse-an-iso-8601-timestamp-in-go

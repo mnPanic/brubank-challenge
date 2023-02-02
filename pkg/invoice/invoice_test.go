@@ -57,7 +57,7 @@ func TestCanGenerateInvoiceForDomesticCallsToStrangers(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := invoice.Invoice{
-		User: invoice.User{
+		User: invoice.InvoiceUser{
 			Address: "Calle Falsa 123",
 			Name:    "Antonio Banderas",
 			Phone:   string(testUser.Phone),
@@ -69,10 +69,17 @@ func TestCanGenerateInvoiceForDomesticCallsToStrangers(t *testing.T) {
 				Timestamp:        firstCall.Date,
 				Amount:           float64(firstCall.Duration),
 			},
+			{
+				DestinationPhone: secondCall.DestinationPhone,
+				Duration:         secondCall.Duration,
+				Timestamp:        secondCall.Date,
+				Amount:           float64(secondCall.Duration),
+			},
 		},
-		TotalInternationalSeconds: 120,
+		TotalInternationalSeconds: firstCall.Duration + secondCall.Duration,
 		TotalNationalSeconds:      0,
 		TotalFriendsSeconds:       0,
+		InvoiceTotal:              float64(firstCall.Duration) + float64(secondCall.Duration),
 	}
 
 	assert.Equal(t, expected, result)
