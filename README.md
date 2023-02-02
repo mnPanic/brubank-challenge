@@ -5,6 +5,7 @@ Challenge de entrevista de Brubank, Febrero 2023
 TODOs:
 
 - Validar formato números de teléfono
+- Llamada a si mismo
 
 Notas sobre el servicio de consulta de usuarios
 

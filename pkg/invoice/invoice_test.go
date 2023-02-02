@@ -1,12 +1,30 @@
 package invoice_test
 
 import (
+	"fmt"
 	"invoice-generator/pkg/invoice"
 	"invoice-generator/pkg/user"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+// Test data common to all tests
+
+// Time periods
+var (
+	_timePeriod = invoice.TimePeriod{
+		Start: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, time.December, 31, 0, 0, 0, 0, time.UTC),
+	}
+
+	_dateInPeriod = "2022-09-05T20:52:44Z"
+	_timeInPeriod = mustParse(time.RFC3339, _dateInPeriod)
+
+	_dateOutsidePeriod = "2023-09-05T20:52:44Z"
+	_timeOutsidePeriod = mustParse(time.RFC3339, _dateOutsidePeriod)
 )
 
 /*
@@ -29,20 +47,20 @@ func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	secondInternationalCall := invoice.Call{
 		DestinationPhone: "+1991111111113",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	result, err := invoice.Generate(
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
-		"2022-01-01", "2023-12-31",
+		_timePeriod,
 		[]invoice.Call{firstInternationalCall, secondInternationalCall},
 	)
 	require.NoError(t, err)
@@ -84,34 +102,34 @@ func TestCallsToFriends(t *testing.T) {
 		DestinationPhone: "+5491111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	internationalCall := invoice.Call{
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	nationalFriendCall := invoice.Call{
 		DestinationPhone: nationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	internationalFriendCall := invoice.Call{
 		DestinationPhone: internationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	result, err := invoice.Generate(
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
-		"2022-01-01", "2023-12-31",
+		_timePeriod,
 		[]invoice.Call{
 			nationalCall,
 			internationalFriendCall,
@@ -157,14 +175,14 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 		DestinationPhone: nationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	internationalFriendCall := invoice.Call{
 		DestinationPhone: internationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
-		Date:             "2022-09-05T20:52:44Z",
+		Date:             _timeInPeriod,
 	}
 
 	const maxFreeFriendCalls = 10
@@ -180,7 +198,7 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 	result, err := invoice.Generate(
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
-		"2022-01-01", "2023-12-31",
+		_timePeriod,
 		calls,
 	)
 	require.NoError(t, err)
@@ -224,7 +242,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					DestinationPhone: "+1991111111",
 					SourcePhone:      string(testUser.Phone),
 					Duration:         60,
-					Date:             "2022-09-05T20:52:44Z",
+					Date:             _timeInPeriod,
 				},
 			},
 			expectedErrorMessage: "invalid call #0: invalid destination phone format, should match \\+[0-9]{13}",
@@ -237,7 +255,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					DestinationPhone: "+1991111111111",
 					SourcePhone:      "+199111111",
 					Duration:         60,
-					Date:             "2022-09-05T20:52:44Z",
+					Date:             _timeInPeriod,
 				},
 			},
 			expectedErrorMessage: "invalid call #0: invalid source phone format, should match \\+[0-9]{13}",
@@ -251,7 +269,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 			_, err := invoice.Generate(
 				user.NewMockFinderForUser(testUser),
 				string(testUser.Phone),
-				"2022-01-01", "2023-12-31",
+				_timePeriod,
 				tc.calls,
 			)
 			assert.EqualError(t, err, tc.expectedErrorMessage)
@@ -259,18 +277,109 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 	}
 }
 
-func TestCallsOutsideBillingPeriodAreIgnored(t *testing.T) {}
-func TestCallsFromOtherUserAreIgnored(t *testing.T)        {}
+func TestCallsOutsideBillingPeriodAreIgnored(t *testing.T) {
+	// There can be calls outside of the specified billing period, and they
+	// shobe ignored.
+
+	testUser := user.User{
+		Name:    "Antonio Banderas",
+		Address: "Calle Falsa 123",
+		Phone:   "+5491111111111",
+	}
+
+	callOutsidePeriod := invoice.Call{
+		DestinationPhone: "+1991111111112",
+		SourcePhone:      string(testUser.Phone),
+		Duration:         60,
+		Date:             _timeOutsidePeriod,
+	}
+
+	nationalCallInsidePeriod := invoice.Call{
+		DestinationPhone: "+5491111111113",
+		SourcePhone:      string(testUser.Phone),
+		Duration:         40,
+		Date:             _timeInPeriod,
+	}
+
+	result, err := invoice.Generate(
+		user.NewMockFinderForUser(testUser),
+		string(testUser.Phone),
+		_timePeriod,
+		[]invoice.Call{callOutsidePeriod, nationalCallInsidePeriod},
+	)
+	require.NoError(t, err)
+
+	assertInvoiceIsExpected(t, result, testUser,
+		[]expectedCall{
+			// shouldn't contain the call outside of the period
+			{call: nationalCallInsidePeriod, cost: 2.5},
+		},
+		expectedTotalSeconds{
+			international: 0, // shouldn't be counted for seconds either
+			national:      40,
+			friends:       0,
+		},
+	)
+}
+
+func TestCallsFromDifferentUserAreIgnored(t *testing.T) {
+	// There can be calls from another user than the one specified, and they
+	// should be ignored
+	testUser := user.User{
+		Name:    "Antonio Banderas",
+		Address: "Calle Falsa 123",
+		Phone:   "+5491111111111",
+	}
+
+	callFromOtherUser := invoice.Call{
+		DestinationPhone: "+1991111111112",
+		SourcePhone:      "+5491111111112",
+		Duration:         60,
+		Date:             _timeInPeriod,
+	}
+
+	nationalCallFromUser := invoice.Call{
+		DestinationPhone: "+5491111111113",
+		SourcePhone:      string(testUser.Phone),
+		Duration:         40,
+		Date:             _timeInPeriod,
+	}
+
+	result, err := invoice.Generate(
+		user.NewMockFinderForUser(testUser),
+		string(testUser.Phone),
+		_timePeriod,
+		[]invoice.Call{callFromOtherUser, nationalCallFromUser},
+	)
+	require.NoError(t, err)
+
+	assertInvoiceIsExpected(t, result, testUser,
+		[]expectedCall{
+			// shouldn't contain the call from other user
+			{call: nationalCallFromUser, cost: 2.5},
+		},
+		expectedTotalSeconds{
+			international: 0, // shouldn't be counted for seconds either
+			national:      40,
+			friends:       0,
+		},
+	)
+
+}
 
 type expectedCall struct {
 	call invoice.Call
 	cost float64
 }
 
+// TODO: Nota de diseño: elegí poner date en expectedCall en lugar de que
+// assertInvoiceIsExpected haga la conversión a iso8601 porque sino no estaría
+// testeando correctamente cómo se formatean las fechas
+
 type expectedTotalSeconds struct {
-	international int
-	national      int
-	friends       int
+	international uint
+	national      uint
+	friends       uint
 }
 
 // assertInvoiceIsExpected asserts that the invoice has the expected user and
@@ -286,9 +395,11 @@ func assertInvoiceIsExpected(t *testing.T, actualInvoice invoice.Invoice, expect
 	for _, expectedCall := range expectedCalls {
 		expectedInvoiceCalls = append(expectedInvoiceCalls, invoice.InvoiceCall{
 			DestinationPhone: expectedCall.call.DestinationPhone,
-			Duration:         expectedCall.call.Duration,
-			Timestamp:        expectedCall.call.Date,
-			Amount:           expectedCall.cost,
+			// TODO: considerar tomar directamente []InvoiceCall y que esto lo
+			// defina el test
+			Duration:  expectedCall.call.Duration,
+			Timestamp: expectedCall.call.Date.Format("2006-01-02T15:04:05-0700"),
+			Amount:    expectedCall.cost,
 		})
 
 		expectedTotal += expectedCall.cost
@@ -308,4 +419,13 @@ func assertInvoiceIsExpected(t *testing.T, actualInvoice invoice.Invoice, expect
 	}
 
 	assert.Equal(t, expectedInvoice, actualInvoice)
+}
+
+func mustParse(layout string, value string) time.Time {
+	t, err := time.Parse(layout, value)
+	if err != nil {
+		panic(fmt.Sprintf("couldn't parse time: %s", err))
+	}
+
+	return t
 }

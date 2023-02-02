@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"invoice-generator/pkg/user"
 	"regexp"
+	"time"
 )
 
 // Phone number format: +549XXXXXXXXXX
 var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{13}`)
 
+// TODO: JSON tags (debería saltar en el test)
 type Invoice struct {
 	User                      InvoiceUser `json:"user"`
 	Calls                     []InvoiceCall
-	TotalInternationalSeconds int `json:"total_international_seconds"`
-	TotalNationalSeconds      int
-	TotalFriendsSeconds       int
+	TotalInternationalSeconds uint `json:"total_international_seconds"`
+	TotalNationalSeconds      uint
+	TotalFriendsSeconds       uint
 	InvoiceTotal              float64
 }
 
@@ -26,7 +28,7 @@ type InvoiceUser struct {
 
 type InvoiceCall struct {
 	DestinationPhone string  `json:"phone_number"` // numero destino
-	Duration         int     `json:"duration"`     // duracion
+	Duration         uint    `json:"duration"`     // duracion
 	Timestamp        string  `json:"timestamp"`    // fecha y hora
 	Amount           float64 `json:"amount"`       // costo
 }
@@ -34,8 +36,8 @@ type InvoiceCall struct {
 type Call struct {
 	DestinationPhone string
 	SourcePhone      string
-	Duration         int    // seconds
-	Date             string // ISO 8601 in UTC
+	Duration         uint
+	Date             time.Time // ISO 8601 in UTC
 	// TODO: cambiar a time.Duration y time.Time
 }
 
@@ -102,14 +104,26 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 	return false
 }
 
+// TODO: Mover a otro lado
+// TimePeriod represents a period of time
+type TimePeriod struct {
+	Start time.Time
+	End   time.Time
+}
+
+func (p TimePeriod) Contains(t time.Time) bool {
+	return t.After(p.Start) && t.Before(p.End)
+}
+
+var timeLayoutISO8601 = "2006-01-02T15:04:05-0700"
+
 // Generate generates an invoice for a given user with calls.
 // It finds the user with the specified number (returning an error if it fails)
 // and calculates the cost for each call.
 func Generate(
 	userFinder user.Finder,
 	userPhoneNumber string,
-	billingStartDate string,
-	billingEndDate string,
+	billingPeriod TimePeriod,
 	calls []Call,
 ) (Invoice, error) {
 	usr, err := userFinder.FindByPhone(user.PhoneNumber(userPhoneNumber))
@@ -120,9 +134,9 @@ func Generate(
 	// TODO: Falopa para que quede más limpio: mapa indexado por CallType que
 	// tiene como valor un int.
 	var (
-		totalInternationalSeconds int
-		totalNationalSeconds      int
-		totalFriendsSeconds       int
+		totalInternationalSeconds uint
+		totalNationalSeconds      uint
+		totalFriendsSeconds       uint
 
 		totalAmount float64
 
@@ -137,13 +151,18 @@ func Generate(
 			return Invoice{}, fmt.Errorf("invalid call #%d: %s", i, err)
 		}
 
+		if shouldSkipCall(call, userPhoneNumber, billingPeriod) {
+			continue
+		}
+
 		// TODO: Evitar calcular dos veces el call type
 		callType := call.Type(usr.Friends)
 		callCost := call.CalculateCost(usr.Friends, currentFriendCalls)
+
 		invoiceCalls = append(invoiceCalls, InvoiceCall{
 			DestinationPhone: call.DestinationPhone,
 			Duration:         call.Duration,
-			Timestamp:        call.Date,
+			Timestamp:        call.Date.Format(timeLayoutISO8601),
 			Amount:           callCost,
 		})
 
@@ -185,4 +204,11 @@ func validateCall(call Call) error {
 	}
 
 	return nil
+}
+
+func shouldSkipCall(call Call, userPhoneNumber string, billingPeriod TimePeriod) bool {
+	isOutsideBillingPeriod := !billingPeriod.Contains(call.Date)
+	madeByOtherUser := userPhoneNumber != call.SourcePhone
+
+	return isOutsideBillingPeriod || madeByOtherUser
 }
