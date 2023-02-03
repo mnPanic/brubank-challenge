@@ -1,6 +1,11 @@
 package user
 
-import "errors"
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+)
 
 // Nota: Este tipo solo lo declaro para que la definición de friends quede más
 // declarativa, sino sería []string y ameritaría un comentario.
@@ -8,10 +13,10 @@ type PhoneNumber string
 
 // User is a telephone line user
 type User struct {
-	Name    string
-	Address string
-	Phone   PhoneNumber
-	Friends []PhoneNumber
+	Name    string        `json:"name"`
+	Address string        `json:"address"`
+	Phone   PhoneNumber   `json:"phone_number"`
+	Friends []PhoneNumber `json:"friends"`
 }
 
 // TODO: Considerar mover a caller
@@ -19,27 +24,44 @@ type Finder interface {
 	FindByPhone(phoneNumber PhoneNumber) (User, error)
 }
 
-func FindByPhone(phoneNumber PhoneNumber) (User, error) {
-	// TODO: POST a https://interview-brubank-api.herokuapp.com/users/:phoneNumber
-	return User{}, errors.New("not implemented")
+// HTTPGetter represents the types that know how to perform http GETs.
+//
+// Nota de diseño: Si se quisiera hacer más genérico se podría tener Do() en la
+// interfaz.
+type HTTPGetter interface {
+	Get(url string) (*http.Response, error)
 }
 
-type MockFinder struct {
-	users map[PhoneNumber]User
+type UserFinder struct {
+	getter HTTPGetter
 }
 
-func NewMockFinderForUser(usr User) MockFinder {
-	return MockFinder{
-		users: map[PhoneNumber]User{
-			usr.Phone: usr,
-		},
+func NewFinder(getter HTTPGetter) UserFinder {
+	return UserFinder{getter: getter}
+}
+
+func (u UserFinder) FindByPhone(phoneNumber PhoneNumber) (User, error) {
+	url := fmt.Sprintf("https://fn-interview-api.azurewebsites.net/users/%s", phoneNumber)
+	resp, err := u.getter.Get(url)
+	if err != nil {
+		return User{}, fmt.Errorf("http get: %s", err)
 	}
-}
 
-func (m MockFinder) FindByPhone(phoneNumber PhoneNumber) (User, error) {
-	usr, ok := m.users[phoneNumber]
-	if !ok {
-		return usr, errors.New("user not found")
+	if resp.StatusCode != http.StatusOK {
+		return User{}, fmt.Errorf("unexpected status code (%d) expected 200 OK", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return User{}, fmt.Errorf("reading body: %s", err)
+	}
+
+	defer resp.Body.Close()
+
+	var usr User
+	err = json.Unmarshal(body, &usr)
+	if err != nil {
+		return User{}, fmt.Errorf("parsing body: %s", err)
 	}
 
 	return usr, nil

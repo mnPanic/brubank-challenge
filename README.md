@@ -67,3 +67,36 @@ Referencias:
 ## Uso
 
 Recomendación: instalar jq
+
+Ejemplo
+
+```bash
+$ go run main.go +5491167930920 2020-01-01 2022-12-12 enunciado/example-brubank-challenge.csv | jq
+Generated invoice successfully
+{
+  "user": {
+    "address": "562 Ritchie Mall",
+    "name": "Bradford Reichel",
+    "phone_number": "+5491167930920"
+  },
+  "calls": [
+    {
+      "phone_number": "+5491167940999",
+      "duration": 484,
+      "timestamp": "2021-04-02T11:09:02Z",
+      "amount": 2.5
+    },
+    // ...
+    {
+      "phone_number": "+5491167940999",
+      "duration": 72,
+      "timestamp": "2020-10-05T10:07:09Z",
+      "amount": 2.5
+    }
+  ],
+  "total_international_seconds": 6042,
+  "total_national_seconds": 15831,
+  "total_friends_seconds": 7172,
+  "total": 5245.5
+}
+```

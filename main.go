@@ -5,19 +5,15 @@ import (
 	"invoice-generator/cmd/cli"
 	"invoice-generator/pkg/user"
 	"log"
+	"net/http"
 	"os"
 )
 
 // -----------
 
 func main() {
-	inv, err := cli.Run(user.NewMockFinderForUser(
-		user.User{
-			Name:    "Antonio Banderas",
-			Address: "Calle Falsa 123",
-			Phone:   "+5491167930920",
-		},
-	), os.ReadFile, os.Args[1:])
+	finder := user.NewFinder(http.DefaultClient)
+	inv, err := cli.Run(finder, os.ReadFile, os.Args[1:])
 	if err != nil {
 		log.Fatal(err.Error())
 	}
