@@ -13,7 +13,6 @@ import (
 // datos de ejemplo provistos.
 var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{12,13}`)
 
-// TODO: JSON tags (debería saltar en el test)
 type Invoice struct {
 	User                      InvoiceUser   `json:"user"`
 	Calls                     []InvoiceCall `json:"calls"`
@@ -39,9 +38,8 @@ type InvoiceCall struct {
 type Call struct {
 	DestinationPhone string
 	SourcePhone      string
-	Duration         uint
-	Date             time.Time // ISO 8601 in UTC
-	// TODO: cambiar a time.Duration y time.Time
+	Duration         uint // Seconds
+	Date             time.Time
 }
 
 // TODO. Idea de abstracción: cost calculator instanciado antes de cada una.
@@ -107,24 +105,13 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 	return false
 }
 
-// TODO: Mover a otro lado
-// TimePeriod represents a period of time
-type TimePeriod struct {
-	Start time.Time
-	End   time.Time
-}
-
-func (p TimePeriod) Contains(t time.Time) bool {
-	return t.After(p.Start) && t.Before(p.End)
-}
-
 // Generate generates an invoice for a given user with calls.
 // It finds the user with the specified number (returning an error if it fails)
 // and calculates the cost for each call.
 func Generate(
 	userFinder user.Finder,
 	userPhoneNumber string,
-	billingPeriod TimePeriod,
+	billingPeriod timeutil.Period,
 	calls []Call,
 ) (Invoice, error) {
 	usr, err := userFinder.FindByPhone(user.PhoneNumber(userPhoneNumber))
@@ -207,7 +194,7 @@ func validateCall(call Call) error {
 	return nil
 }
 
-func shouldSkipCall(call Call, userPhoneNumber string, billingPeriod TimePeriod) bool {
+func shouldSkipCall(call Call, userPhoneNumber string, billingPeriod timeutil.Period) bool {
 	isOutsideBillingPeriod := !billingPeriod.Contains(call.Date)
 	madeByOtherUser := userPhoneNumber != call.SourcePhone
 

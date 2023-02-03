@@ -71,19 +71,19 @@ func parseArgs(args []string) (arguments, error) {
 	}, nil
 }
 
-func makeBillingPeriod(start, end string) (invoice.TimePeriod, error) {
+func makeBillingPeriod(start, end string) (timeutil.Period, error) {
 	const dateFormat = "2006-01-02"
 	billingPeriodStart, err := time.Parse(dateFormat, start)
 	if err != nil {
-		return invoice.TimePeriod{}, errors.New("invalid start date format, expected AAAA-MM-DD")
+		return timeutil.Period{}, errors.New("invalid start date format, expected AAAA-MM-DD")
 	}
 
 	billingPeriodEnd, err := time.Parse(dateFormat, end)
 	if err != nil {
-		return invoice.TimePeriod{}, errors.New("invalid end date format, expected AAAA-MM-DD")
+		return timeutil.Period{}, errors.New("invalid end date format, expected AAAA-MM-DD")
 	}
 
-	return invoice.TimePeriod{Start: billingPeriodStart, End: billingPeriodEnd}, nil
+	return timeutil.Period{Start: billingPeriodStart, End: billingPeriodEnd}, nil
 }
 
 // readCalls reads the calls csv file from the specified file. Each row should

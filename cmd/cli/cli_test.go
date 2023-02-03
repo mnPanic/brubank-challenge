@@ -17,16 +17,18 @@ const (
 )
 
 func TestOnInvalidArgumentsShouldReturnError(t *testing.T) {
-	_, err := cli.Run(defaultUserFinder(), defaultReader(), []string{"invalid number"})
+	_, err := cli.Run(defaultUserFinder(), defaultReader(), []string{"just one arg"})
 	assert.EqualError(t, err, "parsing arguments: wrong number of arguments, expected 4. Usage:\n\t./invoice-generator <telephone> <billing_start> <billing_end> <calls_csv_file>")
 }
 
 func TestShouldFailWithInvalidBillingPeriodStart(t *testing.T) {
+	// Start period missing day
 	_, err := cli.Run(defaultUserFinder(), defaultReader(), []string{phone, "2022-10", "2022-10-01", filename})
 	assert.EqualError(t, err, "invalid billing period format: invalid start date format, expected AAAA-MM-DD")
 }
 
 func TestShouldFailWithInvalidBillingPeriodEnd(t *testing.T) {
+	// End period missing day
 	_, err := cli.Run(defaultUserFinder(), defaultReader(), []string{phone, "2022-10-01", "2022-10", filename})
 	assert.EqualError(t, err, "invalid billing period format: invalid end date format, expected AAAA-MM-DD")
 }
@@ -41,6 +43,7 @@ func TestShouldFailOnInvalidCSVPath(t *testing.T) {
 }
 
 func TestShouldFailOnLineWithWrongNumberOfFields(t *testing.T) {
+	// Line 3 doesn't have the duration field
 	reader := readerWithContent(`numero origen,numero destino,duracion,fecha
 	+5491167980950,+191167980952,462,2020-11-10T04:02:45Z
 	+5491167980950,+191167980952,2020-11-10T04:02:45Z
@@ -51,6 +54,7 @@ func TestShouldFailOnLineWithWrongNumberOfFields(t *testing.T) {
 }
 
 func TestShouldFailOnLineWithInvalidDuration(t *testing.T) {
+	// In line 3, the duration field is a string instead of an int
 	reader := readerWithContent(`numero origen,numero destino,duracion,fecha
 	+5491167980950,+191167980952,462,2020-11-10T04:02:45Z
 	+5491167980950,+191167980952,esto-no-es-duracion,2020-11-10T04:02:45Z

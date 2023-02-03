@@ -18,7 +18,7 @@ import (
 
 // Time periods
 var (
-	_timePeriod = invoice.TimePeriod{
+	_timePeriod = timeutil.Period{
 		Start: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, time.December, 31, 0, 0, 0, 0, time.UTC),
 	}
