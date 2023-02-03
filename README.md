@@ -4,6 +4,7 @@ Challenge de entrevista de Brubank, Febrero 2023
 
 TODOs:
 
+- Refactor calculo de llamadas para que quede lindo y sea extensible.
 - Validar formato números de teléfono
 - Llamada a si mismo
 - Mover test data de usuarios y teléfonos para evitar repetición

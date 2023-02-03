@@ -3,6 +3,7 @@ package invoice_test
 import (
 	"fmt"
 	"invoice-generator/pkg/invoice"
+	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
 	"testing"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TODO: Validar que el teléfono que se pasa como argumento es válido
 
 // Test data common to all tests
 
@@ -245,7 +248,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					Date:             _timeInPeriod,
 				},
 			},
-			expectedErrorMessage: "invalid call #0: invalid destination phone format, should match \\+[0-9]{13}",
+			expectedErrorMessage: "invalid call #0: invalid destination phone format, should match \\+[0-9]{12,13}",
 		},
 		"source phone with too few digits": {
 			// This test also verifies that calls are not filtered by phone
@@ -258,7 +261,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					Date:             _timeInPeriod,
 				},
 			},
-			expectedErrorMessage: "invalid call #0: invalid source phone format, should match \\+[0-9]{13}",
+			expectedErrorMessage: "invalid call #0: invalid source phone format, should match \\+[0-9]{12,13}",
 		},
 		// TODO: Fecha inválida y duración inválida (tal vez quedan del lado del
 		// parseo del CSV)
@@ -398,7 +401,7 @@ func assertInvoiceIsExpected(t *testing.T, actualInvoice invoice.Invoice, expect
 			// TODO: considerar tomar directamente []InvoiceCall y que esto lo
 			// defina el test
 			Duration:  expectedCall.call.Duration,
-			Timestamp: expectedCall.call.Date.Format("2006-01-02T15:04:05-0700"),
+			Timestamp: expectedCall.call.Date.Format(timeutil.LayoutISO8601),
 			Amount:    expectedCall.cost,
 		})
 

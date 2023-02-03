@@ -17,7 +17,7 @@ func main() {
 			Address: "Calle Falsa 123",
 			Phone:   "+5491167930920",
 		},
-	), os.Args[1:])
+	), os.ReadFile, os.Args[1:])
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -26,5 +26,5 @@ func main() {
 	// pipear el output, pero a la vez sea un poco más ameno (que solo loguear
 	// el JSON)
 	fmt.Fprint(os.Stderr, "Generated invoice successfully\n")
-	fmt.Printf(string(inv))
+	fmt.Println(string(inv))
 }

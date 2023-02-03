@@ -2,22 +2,25 @@ package invoice
 
 import (
 	"fmt"
+	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
 	"regexp"
 	"time"
 )
 
 // Phone number format: +549XXXXXXXXXX
-var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{13}`)
+// Nota de diseño: asumo que son válidos de 12 a 13 porque así están en los
+// datos de ejemplo provistos.
+var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{12,13}`)
 
 // TODO: JSON tags (debería saltar en el test)
 type Invoice struct {
-	User                      InvoiceUser `json:"user"`
-	Calls                     []InvoiceCall
-	TotalInternationalSeconds uint `json:"total_international_seconds"`
-	TotalNationalSeconds      uint
-	TotalFriendsSeconds       uint
-	InvoiceTotal              float64
+	User                      InvoiceUser   `json:"user"`
+	Calls                     []InvoiceCall `json:"calls"`
+	TotalInternationalSeconds uint          `json:"total_international_seconds"`
+	TotalNationalSeconds      uint          `json:"total_national_seconds"`
+	TotalFriendsSeconds       uint          `json:"total_friends_seconds"`
+	InvoiceTotal              float64       `json:"total"`
 }
 
 type InvoiceUser struct {
@@ -115,8 +118,6 @@ func (p TimePeriod) Contains(t time.Time) bool {
 	return t.After(p.Start) && t.Before(p.End)
 }
 
-var timeLayoutISO8601 = "2006-01-02T15:04:05-0700"
-
 // Generate generates an invoice for a given user with calls.
 // It finds the user with the specified number (returning an error if it fails)
 // and calculates the cost for each call.
@@ -162,7 +163,7 @@ func Generate(
 		invoiceCalls = append(invoiceCalls, InvoiceCall{
 			DestinationPhone: call.DestinationPhone,
 			Duration:         call.Duration,
-			Timestamp:        call.Date.Format(timeLayoutISO8601),
+			Timestamp:        call.Date.Format(timeutil.LayoutISO8601),
 			Amount:           callCost,
 		})
 
