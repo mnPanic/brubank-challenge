@@ -71,7 +71,7 @@ func TestShouldFailOnLineWithInvalidDate(t *testing.T) {
 	+5491167910920,+191167980952,392,2020-08-09T04:45:25Z`)
 
 	_, err := cli.Run(defaultUserFinder(), reader, []string{phone, "2022-10-01", "2022-10-01", filename})
-	assert.EqualError(t, err, "reading calls: record on line 3: parsing date: parsing time \"2020-11-10T:02:45Z\" as \"2006-01-02T15:04:05Z0700\": cannot parse \":02:45Z\" as \"15\"")
+	assert.EqualError(t, err, "reading calls: record on line 3: parsing date: parsing time \"2020-11-10T:02:45Z\" as \"2006-01-02T15:04:05Z\": cannot parse \":02:45Z\" as \"15\"")
 }
 
 func TestShouldFailOnLineWithInvalidDestinationNumber(t *testing.T) {

@@ -146,7 +146,7 @@ func recordToCall(record []string) (call.Call, error) {
 		return call.Call{}, fmt.Errorf("parsing duration: %s", err)
 	}
 
-	date, err := parseDate(record[3])
+	date, err := time.Parse(timeutil.LayoutISO8601, record[3])
 	if err != nil {
 		return call.Call{}, fmt.Errorf("parsing date: %s", err)
 	}
@@ -163,19 +163,4 @@ func parseDuration(rawDuration string) (uint, error) {
 	}
 
 	return uint(duration), nil
-}
-
-// parseDate parses a raw date from a record into a time. Should be in ISO8601
-// and UTC
-func parseDate(rawDate string) (time.Time, error) {
-	date, err := time.Parse(timeutil.LayoutISO8601, rawDate)
-	if err != nil {
-		return date, err
-	}
-
-	if date.Location() != time.UTC {
-		return date, errors.New("invalid time zone, expected UTC")
-	}
-
-	return date, nil
 }
