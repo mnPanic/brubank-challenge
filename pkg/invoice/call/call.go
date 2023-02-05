@@ -17,11 +17,11 @@ type Call struct {
 }
 
 func New(destPhone string, sourcePhone string, duration uint, date time.Time) (Call, error) {
-	if err := validatePhoneNumber(destPhone); err != nil {
+	if err := ValidatePhoneNumber(destPhone); err != nil {
 		return Call{}, fmt.Errorf("destination phone: %s", err)
 	}
 
-	if err := validatePhoneNumber(sourcePhone); err != nil {
+	if err := ValidatePhoneNumber(sourcePhone); err != nil {
 		return Call{}, fmt.Errorf("source phone: %s", err)
 	}
 
@@ -38,7 +38,7 @@ func New(destPhone string, sourcePhone string, duration uint, date time.Time) (C
 // datos de ejemplo provistos.
 var phoneNumberFormat = regexp.MustCompile(`\+[0-9]{12,13}`)
 
-func validatePhoneNumber(phoneNumber string) error {
+func ValidatePhoneNumber(phoneNumber string) error {
 	if !phoneNumberFormat.MatchString(phoneNumber) {
 		return fmt.Errorf("invalid format, should match %s", phoneNumberFormat.String())
 	}

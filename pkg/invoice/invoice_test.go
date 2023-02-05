@@ -318,6 +318,29 @@ func TestCallsFromDifferentUserAreIgnored(t *testing.T) {
 
 }
 
+func TestInvalidPhoneNumberShouldReturnAnError(t *testing.T) {
+	testUser := user.User{
+		Name:    "Antonio Banderas",
+		Address: "Calle Falsa 123",
+		Phone:   "+5491111111111",
+	}
+
+	_, err := invoice.Generate(user.NewMockFinderForUser(testUser), "invalido", _timePeriod, []call.Call{})
+	assert.EqualError(t, err, "user phone number: invalid format, should match \\+[0-9]{12,13}")
+}
+
+func TestUserNotFoundShouldReturnAnError(t *testing.T) {
+	testUser := user.User{
+		Name:    "Antonio Banderas",
+		Address: "Calle Falsa 123",
+		Phone:   "+5491111111111",
+	}
+
+	// Different phone number than configured
+	_, err := invoice.Generate(user.NewMockFinderForUser(testUser), "+5491111111112", _timePeriod, []call.Call{})
+	assert.EqualError(t, err, "finding user: user not found")
+}
+
 type expectedCall struct {
 	call call.Call
 	cost float64

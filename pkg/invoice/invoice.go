@@ -39,6 +39,10 @@ func Generate(
 	billingPeriod timeutil.Period,
 	calls []call.Call,
 ) (Invoice, error) {
+	if err := call.ValidatePhoneNumber(userPhoneNumber); err != nil {
+		return Invoice{}, fmt.Errorf("user phone number: %s", err)
+	}
+
 	usr, err := userFinder.FindByPhone(user.PhoneNumber(userPhoneNumber))
 	if err != nil {
 		return Invoice{}, fmt.Errorf("finding user: %s", err)
