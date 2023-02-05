@@ -72,16 +72,8 @@ func validatePhoneNumber(phoneNumber string) error {
 // Internamente guarda el contador de las llamadas a amigos.
 
 // TODO: Tiene sentido que esto sea parte de call, o un modulo a parte
-func (c Call) CalculateCost(friends []user.PhoneNumber, currentFriendCalls int) float64 {
-	const maxFreeFriendCalls = 10
+func (c Call) CalculateCost(friends []user.PhoneNumber) float64 {
 	callType := c.Type(friends)
-
-	if callType.IsFriend && currentFriendCalls < maxFreeFriendCalls {
-		return 0
-	}
-
-	// Let it through and charge it as a call to a stranger (either national or
-	// international)
 
 	if callType.IsNational {
 		return 2.5
@@ -131,6 +123,34 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 	return false
 }
 
+type Promotion interface {
+	AppliesTo(Call) bool
+	Apply(Call) float64
+}
+
+type promotionCallToFriends struct {
+	usr                       user.User
+	currentFreeCallsToFriends uint
+}
+
+func NewPromotionFreeCallsToFriends(usr user.User) *promotionCallToFriends {
+	return &promotionCallToFriends{
+		usr:                       usr,
+		currentFreeCallsToFriends: 0,
+	}
+}
+
+func (p *promotionCallToFriends) AppliesTo(call Call) bool {
+	const maxFreeCallsToFriends = 10
+	didntExceedMax := p.currentFreeCallsToFriends < maxFreeCallsToFriends
+	return call.Type(p.usr.Friends).IsFriend && didntExceedMax
+}
+
+func (p *promotionCallToFriends) Apply(call Call) float64 {
+	p.currentFreeCallsToFriends++
+	return 0
+}
+
 var errSkipCall = errors.New("skip call")
 
 type totalSeconds struct {
@@ -146,9 +166,11 @@ type callProcessor struct {
 
 	usr           user.User
 	billingPeriod timeutil.Period
+
+	promotions []Promotion
 }
 
-func NewCallProcessor(usr user.User, period timeutil.Period) callProcessor {
+func NewCallProcessor(usr user.User, period timeutil.Period, promotions []Promotion) callProcessor {
 	return callProcessor{
 		seconds:            totalSeconds{},
 		totalAmount:        0,
@@ -156,6 +178,7 @@ func NewCallProcessor(usr user.User, period timeutil.Period) callProcessor {
 
 		usr:           usr,
 		billingPeriod: period,
+		promotions:    promotions,
 	}
 }
 
@@ -170,12 +193,9 @@ func (c *callProcessor) process(call Call) (float64, error) {
 
 	// TODO: Evitar calcular dos veces el call type
 	callType := call.Type(c.usr.Friends)
-	callCost := call.CalculateCost(c.usr.Friends, c.currentFriendCalls)
 
-	c.totalAmount += callCost
 	if callType.IsFriend {
 		c.seconds.totalFriendsSeconds += call.Duration
-		c.currentFriendCalls += 1
 	}
 
 	// Also count friend call duration for normal calls
@@ -185,7 +205,19 @@ func (c *callProcessor) process(call Call) (float64, error) {
 		c.seconds.totalInternationalSeconds += call.Duration
 	}
 
+	callCost := c.callCost(call)
+	c.totalAmount += callCost
 	return callCost, nil
+}
+
+func (c *callProcessor) callCost(call Call) float64 {
+	for _, promo := range c.promotions {
+		if promo.AppliesTo(call) {
+			return promo.Apply(call)
+		}
+	}
+
+	return call.CalculateCost(c.usr.Friends)
 }
 
 // Generate generates an invoice for a given user with calls.
@@ -202,7 +234,9 @@ func Generate(
 		return Invoice{}, fmt.Errorf("finding user: %s", err)
 	}
 
-	callProcessor := NewCallProcessor(usr, billingPeriod)
+	callProcessor := NewCallProcessor(usr, billingPeriod, []Promotion{
+		NewPromotionFreeCallsToFriends(usr),
+	})
 
 	var invoiceCalls []InvoiceCall
 	for i, call := range calls {
