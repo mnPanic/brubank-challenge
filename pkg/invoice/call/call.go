@@ -47,7 +47,7 @@ func ValidatePhoneNumber(phoneNumber string) error {
 }
 
 // Type returns the type of the call
-func (c Call) Type(friends []user.PhoneNumber) CallType {
+func (c Call) Type(friends []user.PhoneNumber) Type {
 	if c.isFriend(friends) {
 		return FriendCall{subtype: c.baseType()}
 	}
@@ -55,7 +55,7 @@ func (c Call) Type(friends []user.PhoneNumber) CallType {
 	return c.baseType()
 }
 
-func (c Call) baseType() CallType {
+func (c Call) baseType() Type {
 	if c.isNational() {
 		return NationalCall{}
 	}
@@ -98,7 +98,7 @@ const (
 	CharacteristicToFriend Characteristic = iota + 1
 )
 
-type CallType interface {
+type Type interface {
 	BaseCost() float64
 	RegisterDuration(uint, DurationRegisterer)
 	HasCharacteristic(Characteristic) bool
@@ -144,7 +144,7 @@ func (c NationalCall) RegisterDuration(duration uint, registerer DurationRegiste
 
 // FriendCall is a call characteristic
 type FriendCall struct {
-	subtype CallType
+	subtype Type
 }
 
 func (c FriendCall) BaseCost() float64 {

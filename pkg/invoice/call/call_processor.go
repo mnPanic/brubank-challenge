@@ -63,7 +63,7 @@ func (c *Processor) shouldSkipCall(call Call) bool {
 	return isOutsideBillingPeriod || madeByOtherUser
 }
 
-func (c *Processor) callCost(call Call, callType CallType) float64 {
+func (c *Processor) callCost(call Call, callType Type) float64 {
 	for _, promo := range c.promotions {
 		if promo.AppliesTo(call) {
 			return promo.Apply(call)
