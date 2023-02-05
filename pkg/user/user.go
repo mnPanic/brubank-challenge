@@ -20,8 +20,9 @@ type User struct {
 	Friends []PhoneNumber `json:"friends"`
 }
 
-// TODO: Considerar mover a caller
+// A Finder knows how to find users
 type Finder interface {
+	// FindByPhone finds a user by their phone number
 	FindByPhone(phoneNumber PhoneNumber) (User, error)
 }
 
@@ -33,6 +34,8 @@ type HTTPGetter interface {
 	Get(url string) (*http.Response, error)
 }
 
+// UserFinder is a Finder implementation that finds users via the Brubank Users
+// service
 type UserFinder struct {
 	getter HTTPGetter
 }

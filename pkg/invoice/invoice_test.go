@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Validar que el teléfono que se pasa como argumento es válido
-
 // Test data common to all tests
 
 // Time periods
@@ -30,12 +28,6 @@ var (
 	_dateOutsidePeriod = "2023-09-05T20:52:44Z"
 	_timeOutsidePeriod = mustParse(time.RFC3339, _dateOutsidePeriod)
 )
-
-/*
-TODO:
-- llamada fuera del período de facturación
-- llamada con source que no es el mismo que el usuario
-*/
 
 func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {
 	// When generating an invoice that contains international calls to
@@ -346,10 +338,6 @@ type expectedCall struct {
 	cost float64
 }
 
-// TODO: Nota de diseño: elegí poner date en expectedCall en lugar de que
-// assertInvoiceIsExpected haga la conversión a iso8601 porque sino no estaría
-// testeando correctamente cómo se formatean las fechas
-
 type expectedTotalSeconds struct {
 	international uint
 	national      uint
@@ -369,11 +357,9 @@ func assertInvoiceIsExpected(t *testing.T, actualInvoice invoice.Invoice, expect
 	for _, expectedCall := range expectedCalls {
 		expectedInvoiceCalls = append(expectedInvoiceCalls, invoice.InvoiceCall{
 			DestinationPhone: expectedCall.call.DestinationPhone,
-			// TODO: considerar tomar directamente []InvoiceCall y que esto lo
-			// defina el test
-			Duration:  expectedCall.call.Duration,
-			Timestamp: expectedCall.call.Date.Format(timeutil.LayoutISO8601),
-			Amount:    expectedCall.cost,
+			Duration:         expectedCall.call.Duration,
+			Timestamp:        expectedCall.call.Date.Format(timeutil.LayoutISO8601),
+			Amount:           expectedCall.cost,
 		})
 
 		expectedTotal += expectedCall.cost

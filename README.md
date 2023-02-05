@@ -2,14 +2,6 @@
 
 Challenge de entrevista de Brubank, Febrero 2023
 
-TODOs:
-
-- Refactor calculo de llamadas para que quede lindo y sea extensible.
-- Validar formato números de teléfono
-- Llamada a si mismo
-- Mover test data de usuarios y teléfonos para evitar repetición
-- Interfaz de servicio web
-
 Notas sobre el servicio de consulta de usuarios
 
 https://interview-brubank-api.herokuapp.com/users/:phoneNumber
@@ -100,3 +92,12 @@ Generated invoice successfully
   "total": 5245.5
 }
 ```
+
+Correr tests
+
+go test ./...
+
+Correr tests con coverage
+
+go test ./... -coverpkg=./... -coverprofile cover.out -covermode=count
+go tool cover -html=cover.out
