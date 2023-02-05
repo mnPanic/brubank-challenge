@@ -18,9 +18,10 @@ type Processor struct {
 }
 
 type TotalCallDurations struct {
-	TotalInternationalSeconds uint
-	TotalNationalSeconds      uint
-	TotalFriendsSeconds       uint
+	TotalInternationalSeconds  uint
+	TotalNationalSeconds       uint
+	TotalFriendsSeconds        uint
+	TotalInterplanetarySeconds uint
 }
 
 // NewProcessor constructs a call processor.
@@ -85,4 +86,8 @@ func (c *Processor) RegisterNationalCall(duration uint) {
 
 func (c *Processor) RegisterInternationalCall(duration uint) {
 	c.totalDurations.TotalInternationalSeconds += duration
+}
+
+func (c *Processor) RegisterInterplanetaryCall(duration uint) {
+	c.totalDurations.TotalInterplanetarySeconds += duration
 }
