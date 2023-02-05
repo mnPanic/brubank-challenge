@@ -22,11 +22,8 @@ var (
 		End:   time.Date(2022, time.December, 31, 0, 0, 0, 0, time.UTC),
 	}
 
-	_dateInPeriod = "2022-09-05T20:52:44Z"
-	_timeInPeriod = mustParse(time.RFC3339, _dateInPeriod)
-
-	_dateOutsidePeriod = "2023-09-05T20:52:44Z"
-	_timeOutsidePeriod = mustParse(time.RFC3339, _dateOutsidePeriod)
+	_timeInPeriod      = mustParse(time.RFC3339, "2022-09-05T20:52:44Z")
+	_timeOutsidePeriod = mustParse(time.RFC3339, "2023-09-05T20:52:44Z")
 )
 
 func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {

@@ -15,10 +15,6 @@ Challenge de entrevista para Brubank, Febrero 2023.
 Aspirante: Manuel Panichelli (panicmanu@gmail.com /
 https://www.linkedin.com/in/manuel-panichelli/)
 
-TODOs:
-
-- Mover test data de usuarios y teléfonos para evitar repetición
-
 ## Cómo ejecutar
 
 La solución es un CLI (me pareció lo más sencillo de implementar por la lectura
