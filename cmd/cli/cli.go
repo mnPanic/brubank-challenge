@@ -150,12 +150,7 @@ func recordToCall(record []string) (invoice.Call, error) {
 		return invoice.Call{}, fmt.Errorf("parsing date: %s", err)
 	}
 
-	return invoice.Call{
-		DestinationPhone: destPhoneNumber,
-		SourcePhone:      sourcePhoneNumber,
-		Duration:         duration,
-		Date:             date,
-	}, nil
+	return invoice.NewCall(destPhoneNumber, sourcePhoneNumber, duration, date)
 }
 
 func parseDuration(rawDuration string) (uint, error) {

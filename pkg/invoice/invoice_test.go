@@ -227,59 +227,6 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 	})
 }
 
-func TestInvalidCallFormatsReturnError(t *testing.T) {
-	// If any calls have problems, we return an error instead of ignoring them.
-	testUser := user.User{
-		Name:    "Antonio Banderas",
-		Address: "Calle Falsa 123",
-		Phone:   "+5491111111111",
-	}
-
-	tests := map[string]struct {
-		calls                []invoice.Call
-		expectedErrorMessage string
-	}{
-		"destination phone with too few digits": {
-			calls: []invoice.Call{
-				{
-					DestinationPhone: "+1991111111",
-					SourcePhone:      string(testUser.Phone),
-					Duration:         60,
-					Date:             _timeInPeriod,
-				},
-			},
-			expectedErrorMessage: "processing call #0: invalid destination phone format, should match \\+[0-9]{12,13}",
-		},
-		"source phone with too few digits": {
-			// This test also verifies that calls are not filtered by phone
-			// before error checking (which could lead to missed errors)
-			calls: []invoice.Call{
-				{
-					DestinationPhone: "+1991111111111",
-					SourcePhone:      "+199111111",
-					Duration:         60,
-					Date:             _timeInPeriod,
-				},
-			},
-			expectedErrorMessage: "processing call #0: invalid source phone format, should match \\+[0-9]{12,13}",
-		},
-		// TODO: Fecha inválida y duración inválida (tal vez quedan del lado del
-		// parseo del CSV)
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			_, err := invoice.Generate(
-				user.NewMockFinderForUser(testUser),
-				string(testUser.Phone),
-				_timePeriod,
-				tc.calls,
-			)
-			assert.EqualError(t, err, tc.expectedErrorMessage)
-		})
-	}
-}
-
 func TestCallsOutsideBillingPeriodAreIgnored(t *testing.T) {
 	// There can be calls outside of the specified billing period, and they
 	// shobe ignored.

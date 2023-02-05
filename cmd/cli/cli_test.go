@@ -74,6 +74,26 @@ func TestShouldFailOnLineWithInvalidDate(t *testing.T) {
 	assert.EqualError(t, err, "reading calls: record on line 3: parsing date: parsing time \"2020-11-10T:02:45Z\" as \"2006-01-02T15:04:05Z0700\": cannot parse \":02:45Z\" as \"15\"")
 }
 
+func TestShouldFailOnLineWithInvalidDestinationNumber(t *testing.T) {
+	reader := readerWithContent(`numero origen,numero destino,duracion,fecha
+	+5491167980950,+191167980952,462,2020-11-10T04:02:45Z
+	+5491167980950,+191167980,400,2020-11-10T04:02:45Z
+	+5491167910920,+191167980952,392,2020-08-09T04:45:25Z`)
+
+	_, err := cli.Run(defaultUserFinder(), reader, []string{phone, "2022-10-01", "2022-10-01", filename})
+	assert.EqualError(t, err, "reading calls: record on line 3: destination phone: invalid format, should match \\+[0-9]{12,13}")
+}
+
+func TestShouldFailOnLineWithInvalidSourceNumber(t *testing.T) {
+	reader := readerWithContent(`numero origen,numero destino,duracion,fecha
+	+5491167980950,+191167980952,462,2020-11-10T04:02:45Z
+	+5491167980,+5491167980950,400,2020-11-10T04:02:45Z
+	+5491167910920,+191167980952,392,2020-08-09T04:45:25Z`)
+
+	_, err := cli.Run(defaultUserFinder(), reader, []string{phone, "2022-10-01", "2022-10-01", filename})
+	assert.EqualError(t, err, "reading calls: record on line 3: source phone: invalid format, should match \\+[0-9]{12,13}")
+}
+
 func TestShouldReturnInvoiceGenerationErrors(t *testing.T) {
 	// Invoice generation fails with an invalid user
 	_, err := cli.Run(defaultUserFinder(), defaultReader(), []string{"+5491167950941", "2022-10-01", "2022-10-01", filename})

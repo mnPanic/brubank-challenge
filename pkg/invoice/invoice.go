@@ -43,6 +43,31 @@ type Call struct {
 	Date             time.Time
 }
 
+func NewCall(destPhone string, sourcePhone string, duration uint, date time.Time) (Call, error) {
+	if err := validatePhoneNumber(destPhone); err != nil {
+		return Call{}, fmt.Errorf("destination phone: %s", err)
+	}
+
+	if err := validatePhoneNumber(sourcePhone); err != nil {
+		return Call{}, fmt.Errorf("source phone: %s", err)
+	}
+
+	return Call{
+		DestinationPhone: destPhone,
+		SourcePhone:      sourcePhone,
+		Duration:         duration,
+		Date:             date,
+	}, nil
+}
+
+func validatePhoneNumber(phoneNumber string) error {
+	if !phoneNumberFormat.MatchString(phoneNumber) {
+		return fmt.Errorf("invalid format, should match %s", phoneNumberFormat.String())
+	}
+
+	return nil
+}
+
 // TODO. Idea de abstracción: cost calculator instanciado antes de cada una.
 // Internamente guarda el contador de las llamadas a amigos.
 
@@ -139,10 +164,6 @@ func (c *callProcessor) finish() (float64, totalSeconds) {
 }
 
 func (c *callProcessor) process(call Call) (float64, error) {
-	if err := validateCall(call); err != nil {
-		return 0, err
-	}
-
 	if shouldSkipCall(call, string(c.usr.Phone), c.billingPeriod) {
 		return 0, errSkipCall
 	}
@@ -216,18 +237,6 @@ func Generate(
 		TotalInternationalSeconds: totalSeconds.totalInternationalSeconds,
 		InvoiceTotal:              totalAmount,
 	}, nil
-}
-
-func validateCall(call Call) error {
-	if !phoneNumberFormat.MatchString(call.DestinationPhone) {
-		return fmt.Errorf("invalid destination phone format, should match %s", phoneNumberFormat.String())
-	}
-
-	if !phoneNumberFormat.MatchString(call.SourcePhone) {
-		return fmt.Errorf("invalid source phone format, should match %s", phoneNumberFormat.String())
-	}
-
-	return nil
 }
 
 func shouldSkipCall(call Call, userPhoneNumber string, billingPeriod timeutil.Period) bool {
