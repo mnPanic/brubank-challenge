@@ -26,6 +26,9 @@ de CSVs). Se le pasan los datos de entrada como especifica el enunciado y el
 output es la factura en JSON. Como este no tiene formato, recomiendo instalar
 [jq](https://stedolan.github.io/jq/) para poder visualizarlo mejor.
 
+Lo desarrollé con la versión go1.18.4. Debería andar bien con versiones
+posteriores, pero cualquier cosa pueden probar con esa.
+
 Los argumentos son posicionales,
 
 1. Número de teléfono del usuario a generar la factura. Debe tener un formato correcto
