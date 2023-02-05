@@ -69,6 +69,21 @@ func TestGetError(t *testing.T) {
 	require.EqualError(t, err, "http get: timeout")
 }
 
+func TestWhenPhonesDifferReturnsError(t *testing.T) {
+	finder := user.NewFinder(staticGetter{
+		content: json.RawMessage(`{
+			"name": "Jorge Perez",
+			"address": "77826 Jaime Mews",
+			"friends": ["+5491167980953", "+5491167980951", "+191167980953"],
+			"phone_number": "otro numero que no es el mismo"
+		}`),
+		statusCode: http.StatusOK,
+	})
+
+	_, err := finder.FindByPhone("+5491167980952")
+	require.EqualError(t, err, "invalid response, phone numbers differ")
+}
+
 type staticGetter struct {
 	content    json.RawMessage
 	statusCode int

@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -62,6 +63,10 @@ func (u UserFinder) FindByPhone(phoneNumber PhoneNumber) (User, error) {
 	err = json.Unmarshal(body, &usr)
 	if err != nil {
 		return User{}, fmt.Errorf("parsing body: %s", err)
+	}
+
+	if usr.Phone != phoneNumber {
+		return User{}, errors.New("invalid response, phone numbers differ")
 	}
 
 	return usr, nil
