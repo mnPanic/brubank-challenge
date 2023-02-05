@@ -1,6 +1,7 @@
 package invoice
 
 import (
+	"errors"
 	"fmt"
 	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
@@ -105,6 +106,67 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 	return false
 }
 
+var errSkipCall = errors.New("skip call")
+
+type totalSeconds struct {
+	totalInternationalSeconds uint
+	totalNationalSeconds      uint
+	totalFriendsSeconds       uint
+}
+
+type callProcessor struct {
+	seconds            totalSeconds
+	totalAmount        float64
+	currentFriendCalls int
+
+	usr           user.User
+	billingPeriod timeutil.Period
+}
+
+func NewCallProcessor(usr user.User, period timeutil.Period) callProcessor {
+	return callProcessor{
+		seconds:            totalSeconds{},
+		totalAmount:        0,
+		currentFriendCalls: 0,
+
+		usr:           usr,
+		billingPeriod: period,
+	}
+}
+
+func (c *callProcessor) finish() (float64, totalSeconds) {
+	return c.totalAmount, c.seconds
+}
+
+func (c *callProcessor) process(call Call) (float64, error) {
+	if err := validateCall(call); err != nil {
+		return 0, err
+	}
+
+	if shouldSkipCall(call, string(c.usr.Phone), c.billingPeriod) {
+		return 0, errSkipCall
+	}
+
+	// TODO: Evitar calcular dos veces el call type
+	callType := call.Type(c.usr.Friends)
+	callCost := call.CalculateCost(c.usr.Friends, c.currentFriendCalls)
+
+	c.totalAmount += callCost
+	if callType.IsFriend {
+		c.seconds.totalFriendsSeconds += call.Duration
+		c.currentFriendCalls += 1
+	}
+
+	// Also count friend call duration for normal calls
+	if callType.IsNational {
+		c.seconds.totalNationalSeconds += call.Duration
+	} else {
+		c.seconds.totalInternationalSeconds += call.Duration
+	}
+
+	return callCost, nil
+}
+
 // Generate generates an invoice for a given user with calls.
 // It finds the user with the specified number (returning an error if it fails)
 // and calculates the cost for each call.
@@ -119,33 +181,18 @@ func Generate(
 		return Invoice{}, fmt.Errorf("finding user: %s", err)
 	}
 
-	// TODO: Falopa para que quede más limpio: mapa indexado por CallType que
-	// tiene como valor un int.
-	var (
-		totalInternationalSeconds uint
-		totalNationalSeconds      uint
-		totalFriendsSeconds       uint
+	callProcessor := NewCallProcessor(usr, billingPeriod)
 
-		totalAmount float64
-
-		currentFriendCalls int // To charge after the 10th
-	)
-
-	// TODO: usar make para hacer más eficiente la transformación
 	var invoiceCalls []InvoiceCall
 	for i, call := range calls {
-
-		if err := validateCall(call); err != nil {
-			return Invoice{}, fmt.Errorf("invalid call #%d: %s", i, err)
-		}
-
-		if shouldSkipCall(call, userPhoneNumber, billingPeriod) {
+		callCost, err := callProcessor.process(call)
+		if errors.Is(err, errSkipCall) {
 			continue
 		}
 
-		// TODO: Evitar calcular dos veces el call type
-		callType := call.Type(usr.Friends)
-		callCost := call.CalculateCost(usr.Friends, currentFriendCalls)
+		if err != nil {
+			return Invoice{}, fmt.Errorf("processing call #%d: %s", i, err)
+		}
 
 		invoiceCalls = append(invoiceCalls, InvoiceCall{
 			DestinationPhone: call.DestinationPhone,
@@ -153,20 +200,9 @@ func Generate(
 			Timestamp:        call.Date.Format(timeutil.LayoutISO8601),
 			Amount:           callCost,
 		})
-
-		totalAmount += callCost
-		if callType.IsFriend {
-			totalFriendsSeconds += call.Duration
-			currentFriendCalls += 1
-		}
-
-		// Also count friend call duration for normal calls
-		if callType.IsNational {
-			totalNationalSeconds += call.Duration
-		} else {
-			totalInternationalSeconds += call.Duration
-		}
 	}
+
+	totalAmount, totalSeconds := callProcessor.finish()
 
 	return Invoice{
 		User: InvoiceUser{
@@ -175,9 +211,9 @@ func Generate(
 			Phone:   string(usr.Phone),
 		},
 		Calls:                     invoiceCalls,
-		TotalFriendsSeconds:       totalFriendsSeconds,
-		TotalNationalSeconds:      totalNationalSeconds,
-		TotalInternationalSeconds: totalInternationalSeconds,
+		TotalFriendsSeconds:       totalSeconds.totalFriendsSeconds,
+		TotalNationalSeconds:      totalSeconds.totalNationalSeconds,
+		TotalInternationalSeconds: totalSeconds.totalInternationalSeconds,
 		InvoiceTotal:              totalAmount,
 	}, nil
 }

@@ -248,7 +248,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					Date:             _timeInPeriod,
 				},
 			},
-			expectedErrorMessage: "invalid call #0: invalid destination phone format, should match \\+[0-9]{12,13}",
+			expectedErrorMessage: "processing call #0: invalid destination phone format, should match \\+[0-9]{12,13}",
 		},
 		"source phone with too few digits": {
 			// This test also verifies that calls are not filtered by phone
@@ -261,7 +261,7 @@ func TestInvalidCallFormatsReturnError(t *testing.T) {
 					Date:             _timeInPeriod,
 				},
 			},
-			expectedErrorMessage: "invalid call #0: invalid source phone format, should match \\+[0-9]{12,13}",
+			expectedErrorMessage: "processing call #0: invalid source phone format, should match \\+[0-9]{12,13}",
 		},
 		// TODO: Fecha inválida y duración inválida (tal vez quedan del lado del
 		// parseo del CSV)
