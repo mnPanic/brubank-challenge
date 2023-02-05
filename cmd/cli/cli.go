@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"invoice-generator/pkg/invoice"
+	"invoice-generator/pkg/invoice/call"
 	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
 	"io"
@@ -93,7 +94,7 @@ func makeBillingPeriod(start, end string) (timeutil.Period, error) {
 //  - Duration (in seconds)
 //  - Date (ISO8601 in UTC)
 //
-func readCalls(fileReader FileReader, path string) ([]invoice.Call, error) {
+func readCalls(fileReader FileReader, path string) ([]call.Call, error) {
 	// Nota de diseño: En vez de hacer os.ReadFile para leer el contenido
 	// entero, podría haber hecho os.Read y leer línea por línea. Eso sería
 	// más escalable para archivos más grandes que no entren en memoria.
@@ -109,7 +110,7 @@ func readCalls(fileReader FileReader, path string) ([]invoice.Call, error) {
 	reader.FieldsPerRecord = 4
 	reader.Read() // Skip the header column
 
-	var calls []invoice.Call
+	var calls []call.Call
 
 	currentRow := 2 // we skipped the first one
 	for {
@@ -137,20 +138,20 @@ func readCalls(fileReader FileReader, path string) ([]invoice.Call, error) {
 	return calls, nil
 }
 
-func recordToCall(record []string) (invoice.Call, error) {
+func recordToCall(record []string) (call.Call, error) {
 	sourcePhoneNumber := record[0]
 	destPhoneNumber := record[1]
 	duration, err := parseDuration(record[2])
 	if err != nil {
-		return invoice.Call{}, fmt.Errorf("parsing duration: %s", err)
+		return call.Call{}, fmt.Errorf("parsing duration: %s", err)
 	}
 
 	date, err := parseDate(record[3])
 	if err != nil {
-		return invoice.Call{}, fmt.Errorf("parsing date: %s", err)
+		return call.Call{}, fmt.Errorf("parsing date: %s", err)
 	}
 
-	return invoice.NewCall(destPhoneNumber, sourcePhoneNumber, duration, date)
+	return call.New(destPhoneNumber, sourcePhoneNumber, duration, date)
 }
 
 func parseDuration(rawDuration string) (uint, error) {

@@ -3,6 +3,7 @@ package invoice_test
 import (
 	"fmt"
 	"invoice-generator/pkg/invoice"
+	"invoice-generator/pkg/invoice/call"
 	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
 	"testing"
@@ -46,14 +47,14 @@ func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {
 		Phone:   "+5491111111111",
 	}
 
-	firstInternationalCall := invoice.Call{
+	firstInternationalCall := call.Call{
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
 		Date:             _timeInPeriod,
 	}
 
-	secondInternationalCall := invoice.Call{
+	secondInternationalCall := call.Call{
 		DestinationPhone: "+1991111111113",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
@@ -64,7 +65,7 @@ func TestCanGenerateInvoiceForInternationalCallsToStrangers(t *testing.T) {
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		_timePeriod,
-		[]invoice.Call{firstInternationalCall, secondInternationalCall},
+		[]call.Call{firstInternationalCall, secondInternationalCall},
 	)
 	require.NoError(t, err)
 
@@ -101,28 +102,28 @@ func TestCallsToFriends(t *testing.T) {
 
 	// We add national and international calls to strangers to verify not all
 	// are taken as friends
-	nationalCall := invoice.Call{
+	nationalCall := call.Call{
 		DestinationPhone: "+5491111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
 		Date:             _timeInPeriod,
 	}
 
-	internationalCall := invoice.Call{
+	internationalCall := call.Call{
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
 		Date:             _timeInPeriod,
 	}
 
-	nationalFriendCall := invoice.Call{
+	nationalFriendCall := call.Call{
 		DestinationPhone: nationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
 		Date:             _timeInPeriod,
 	}
 
-	internationalFriendCall := invoice.Call{
+	internationalFriendCall := call.Call{
 		DestinationPhone: internationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
@@ -133,7 +134,7 @@ func TestCallsToFriends(t *testing.T) {
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		_timePeriod,
-		[]invoice.Call{
+		[]call.Call{
 			nationalCall,
 			internationalFriendCall,
 			nationalFriendCall,
@@ -174,14 +175,14 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 		Friends: []user.PhoneNumber{nationalPhone, internationalPhone},
 	}
 
-	nationalFriendCall := invoice.Call{
+	nationalFriendCall := call.Call{
 		DestinationPhone: nationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
 		Date:             _timeInPeriod,
 	}
 
-	internationalFriendCall := invoice.Call{
+	internationalFriendCall := call.Call{
 		DestinationPhone: internationalPhone,
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
@@ -190,7 +191,7 @@ func TestFriendCallsAreFreeUpToTen(t *testing.T) {
 
 	const maxFreeFriendCalls = 10
 
-	var calls []invoice.Call
+	var calls []call.Call
 	for i := 0; i < maxFreeFriendCalls; i++ {
 		calls = append(calls, nationalFriendCall)
 	}
@@ -237,14 +238,14 @@ func TestCallsOutsideBillingPeriodAreIgnored(t *testing.T) {
 		Phone:   "+5491111111111",
 	}
 
-	callOutsidePeriod := invoice.Call{
+	callOutsidePeriod := call.Call{
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         60,
 		Date:             _timeOutsidePeriod,
 	}
 
-	nationalCallInsidePeriod := invoice.Call{
+	nationalCallInsidePeriod := call.Call{
 		DestinationPhone: "+5491111111113",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
@@ -255,7 +256,7 @@ func TestCallsOutsideBillingPeriodAreIgnored(t *testing.T) {
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		_timePeriod,
-		[]invoice.Call{callOutsidePeriod, nationalCallInsidePeriod},
+		[]call.Call{callOutsidePeriod, nationalCallInsidePeriod},
 	)
 	require.NoError(t, err)
 
@@ -281,14 +282,14 @@ func TestCallsFromDifferentUserAreIgnored(t *testing.T) {
 		Phone:   "+5491111111111",
 	}
 
-	callFromOtherUser := invoice.Call{
+	callFromOtherUser := call.Call{
 		DestinationPhone: "+1991111111112",
 		SourcePhone:      "+5491111111112",
 		Duration:         60,
 		Date:             _timeInPeriod,
 	}
 
-	nationalCallFromUser := invoice.Call{
+	nationalCallFromUser := call.Call{
 		DestinationPhone: "+5491111111113",
 		SourcePhone:      string(testUser.Phone),
 		Duration:         40,
@@ -299,7 +300,7 @@ func TestCallsFromDifferentUserAreIgnored(t *testing.T) {
 		user.NewMockFinderForUser(testUser),
 		string(testUser.Phone),
 		_timePeriod,
-		[]invoice.Call{callFromOtherUser, nationalCallFromUser},
+		[]call.Call{callFromOtherUser, nationalCallFromUser},
 	)
 	require.NoError(t, err)
 
@@ -318,7 +319,7 @@ func TestCallsFromDifferentUserAreIgnored(t *testing.T) {
 }
 
 type expectedCall struct {
-	call invoice.Call
+	call call.Call
 	cost float64
 }
 

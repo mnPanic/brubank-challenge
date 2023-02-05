@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"invoice-generator/pkg/invoice"
+	"invoice-generator/pkg/invoice/call"
 	"testing"
 	"time"
 
@@ -20,7 +20,7 @@ func TestReadCalls(t *testing.T) {
 	calls, err := readCalls(reader, "test-file.csv")
 	require.NoError(t, err)
 
-	expectedCalls := []invoice.Call{
+	expectedCalls := []call.Call{
 		{
 			SourcePhone:      "+5491167980950",
 			DestinationPhone: "+191167980952",
