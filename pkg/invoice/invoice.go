@@ -50,6 +50,8 @@ func Generate(
 
 	callProcessor := call.NewProcessor(usr, billingPeriod, []call.Promotion{
 		call.NewPromotionFreeCallsToFriends(usr),
+		// Nota: Agregada después de friends para que tenga precedencia.
+		call.NewPromotionInternationalCallsToMercosur(usr),
 	})
 
 	var invoiceCalls []InvoiceCall

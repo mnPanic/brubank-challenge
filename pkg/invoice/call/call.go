@@ -97,6 +97,7 @@ type Characteristic uint
 
 const (
 	CharacteristicToFriend Characteristic = iota + 1
+	CharacteristicInternational
 )
 
 type Type interface {
