@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+// Nota de diseño: Podría haber usado un pkg como https://github.com/spf13/cobra
+// para hacer el CLI, pero para este caso es overkill porque todos los
+// argumentos son obligatorios, pueden ir en orden, y no hay flags.
+
 type arguments struct {
 	userTelephoneNumber string
 	billingPeriodStart  string // AAAA-MM-DD
@@ -25,10 +29,6 @@ type arguments struct {
 // FileReader reads a file from the filesystem. Used to mock reading of csv
 // files.
 type FileReader func(name string) ([]byte, error)
-
-// Nota de diseño: Podría haber usado un pkg como https://github.com/spf13/cobra
-// para hacer el CLI, pero para este caso es overkill porque todos los
-// argumentos son obligatorios, pueden ir en orden, y no hay flags.
 
 func Run(userFinder user.Finder, fileReader FileReader, rawArgs []string) (json.RawMessage, error) {
 	args, err := parseArgs(rawArgs)
