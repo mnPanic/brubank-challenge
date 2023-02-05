@@ -1,7 +1,6 @@
 package invoice
 
 import (
-	"errors"
 	"fmt"
 	"invoice-generator/pkg/invoice/call"
 	"invoice-generator/pkg/platform/timeutil"
@@ -53,14 +52,10 @@ func Generate(
 	})
 
 	var invoiceCalls []InvoiceCall
-	for i, aCall := range calls {
-		callCost, err := callProcessor.Process(aCall)
-		if errors.Is(err, call.ErrSkipCall) {
+	for _, aCall := range calls {
+		callCost, skip := callProcessor.Process(aCall)
+		if skip {
 			continue
-		}
-
-		if err != nil {
-			return Invoice{}, fmt.Errorf("processing call #%d: %s", i, err)
 		}
 
 		invoiceCalls = append(invoiceCalls, InvoiceCall{

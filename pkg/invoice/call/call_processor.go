@@ -1,13 +1,9 @@
 package call
 
 import (
-	"errors"
 	"invoice-generator/pkg/platform/timeutil"
 	"invoice-generator/pkg/user"
 )
-
-// ErrSkipCall is returned by the call processor when a call should be skipped.
-var ErrSkipCall = errors.New("skip call")
 
 // A Processor processes calls for a user one by one, returning their cost
 // with any suitable promotions applied. It also summarizes their durations and
@@ -44,12 +40,11 @@ func (c *Processor) Summarize() (float64, TotalCallDurations) {
 	return c.totalAmount, c.totalDurations
 }
 
-// Process a call and return its cost. ErrSkipCall is returned if it should be
-// skipped because it doesn't belong to the user we're processing or if it was
-// made outside of the billing period.
-func (c *Processor) Process(call Call) (float64, error) {
+// Process a call and return its cost. A call is skipped if it doesn't belong to
+// the user we're processing or if it was made outside of the billing period.
+func (c *Processor) Process(call Call) (cost float64, skip bool) {
 	if c.shouldSkipCall(call) {
-		return 0, ErrSkipCall
+		return 0, true
 	}
 
 	callType := call.Type(c.usr.Friends)
@@ -58,7 +53,7 @@ func (c *Processor) Process(call Call) (float64, error) {
 
 	callCost := c.callCost(call, callType)
 	c.totalAmount += callCost
-	return callCost, nil
+	return callCost, false
 }
 
 func (c *Processor) shouldSkipCall(call Call) bool {
