@@ -68,31 +68,81 @@ func validatePhoneNumber(phoneNumber string) error {
 	return nil
 }
 
-// TODO. Idea de abstracción: cost calculator instanciado antes de cada una.
-// Internamente guarda el contador de las llamadas a amigos.
-
-// TODO: Tiene sentido que esto sea parte de call, o un modulo a parte
-func (c Call) CalculateCost(friends []user.PhoneNumber) float64 {
-	callType := c.Type(friends)
-
-	if callType.IsNational {
-		return 2.5
-	}
-
-	// International
-	return float64(c.Duration)
+type DurationRegisterer interface {
+	RegisterFriendCall(uint)
+	RegisterNationalCall(uint)
+	RegisterInternationalCall(uint)
 }
 
-type CallType struct {
-	IsNational bool // National or international
-	IsFriend   bool // Friend or stranger
+type CallType interface {
+	BaseCost() float64
+	RegisterDuration(uint, DurationRegisterer)
+	HasCharacteristic(string) bool
+}
+
+type InternationalCall struct {
+	durationSecs uint
+}
+
+func (c InternationalCall) BaseCost() float64 {
+	return float64(c.durationSecs)
+}
+
+func (c InternationalCall) HasCharacteristic(_ string) bool { return false }
+
+func (c InternationalCall) RegisterDuration(duration uint, registerer DurationRegisterer) {
+	registerer.RegisterInternationalCall(duration)
+}
+
+type NationalCall struct{}
+
+func (c NationalCall) BaseCost() float64 {
+	return 2.5
+}
+
+func (c NationalCall) HasCharacteristic(_ string) bool { return false }
+
+func (c NationalCall) RegisterDuration(duration uint, registerer DurationRegisterer) {
+	registerer.RegisterNationalCall(duration)
+}
+
+// FriendCall is a composite call type
+type FriendCall struct {
+	subtype CallType
+}
+
+func (c FriendCall) BaseCost() float64 {
+	return c.subtype.BaseCost()
+}
+
+const (
+	callCharacteristicToFriend = "call_to_friend"
+)
+
+func (c FriendCall) HasCharacteristic(characteristic string) bool {
+	return characteristic == callCharacteristicToFriend
+}
+
+func (c FriendCall) RegisterDuration(duration uint, registerer DurationRegisterer) {
+	registerer.RegisterFriendCall(duration)
+	// Friend call register durations for friend and their base type
+	c.subtype.RegisterDuration(duration, registerer)
 }
 
 func (c Call) Type(friends []user.PhoneNumber) CallType {
-	return CallType{
-		IsNational: c.isNational(),
-		IsFriend:   c.isFriend(friends),
+	if c.isFriend(friends) {
+		return FriendCall{subtype: c.baseType()}
 	}
+
+	return c.baseType()
+}
+
+func (c Call) baseType() CallType {
+	if c.isNational() {
+		return NationalCall{}
+	}
+
+	return InternationalCall{durationSecs: c.Duration}
 }
 
 // isNational returns whether the call was made to the same country (by
@@ -124,12 +174,16 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 }
 
 type Promotion interface {
+	// AppliesTo returns whether a promotion applies to a call
 	AppliesTo(Call) bool
+
+	// Apply applies the promotion to the call, returning the final cost
 	Apply(Call) float64
 }
 
 type promotionCallToFriends struct {
-	usr                       user.User
+	usr user.User
+
 	currentFreeCallsToFriends uint
 }
 
@@ -143,7 +197,9 @@ func NewPromotionFreeCallsToFriends(usr user.User) *promotionCallToFriends {
 func (p *promotionCallToFriends) AppliesTo(call Call) bool {
 	const maxFreeCallsToFriends = 10
 	didntExceedMax := p.currentFreeCallsToFriends < maxFreeCallsToFriends
-	return call.Type(p.usr.Friends).IsFriend && didntExceedMax
+	isCallToFriend := call.Type(p.usr.Friends).HasCharacteristic(callCharacteristicToFriend)
+
+	return isCallToFriend && didntExceedMax
 }
 
 func (p *promotionCallToFriends) Apply(call Call) float64 {
@@ -160,21 +216,18 @@ type totalSeconds struct {
 }
 
 type callProcessor struct {
-	seconds            totalSeconds
-	totalAmount        float64
-	currentFriendCalls int
-
 	usr           user.User
 	billingPeriod timeutil.Period
+	promotions    []Promotion
 
-	promotions []Promotion
+	seconds     totalSeconds
+	totalAmount float64
 }
 
 func NewCallProcessor(usr user.User, period timeutil.Period, promotions []Promotion) callProcessor {
 	return callProcessor{
-		seconds:            totalSeconds{},
-		totalAmount:        0,
-		currentFriendCalls: 0,
+		seconds:     totalSeconds{},
+		totalAmount: 0,
 
 		usr:           usr,
 		billingPeriod: period,
@@ -187,37 +240,46 @@ func (c *callProcessor) finish() (float64, totalSeconds) {
 }
 
 func (c *callProcessor) process(call Call) (float64, error) {
-	if shouldSkipCall(call, string(c.usr.Phone), c.billingPeriod) {
+	if c.shouldSkipCall(call) {
 		return 0, errSkipCall
 	}
 
-	// TODO: Evitar calcular dos veces el call type
 	callType := call.Type(c.usr.Friends)
 
-	if callType.IsFriend {
-		c.seconds.totalFriendsSeconds += call.Duration
-	}
+	callType.RegisterDuration(call.Duration, c)
 
-	// Also count friend call duration for normal calls
-	if callType.IsNational {
-		c.seconds.totalNationalSeconds += call.Duration
-	} else {
-		c.seconds.totalInternationalSeconds += call.Duration
-	}
-
-	callCost := c.callCost(call)
+	callCost := c.callCost(call, callType)
 	c.totalAmount += callCost
 	return callCost, nil
 }
 
-func (c *callProcessor) callCost(call Call) float64 {
+func (c *callProcessor) shouldSkipCall(call Call) bool {
+	isOutsideBillingPeriod := !c.billingPeriod.Contains(call.Date)
+	madeByOtherUser := string(c.usr.Phone) != call.SourcePhone
+
+	return isOutsideBillingPeriod || madeByOtherUser
+}
+
+func (c *callProcessor) callCost(call Call, callType CallType) float64 {
 	for _, promo := range c.promotions {
 		if promo.AppliesTo(call) {
 			return promo.Apply(call)
 		}
 	}
 
-	return call.CalculateCost(c.usr.Friends)
+	return callType.BaseCost()
+}
+
+func (c *callProcessor) RegisterFriendCall(duration uint) {
+	c.seconds.totalFriendsSeconds += duration
+}
+
+func (c *callProcessor) RegisterNationalCall(duration uint) {
+	c.seconds.totalNationalSeconds += duration
+}
+
+func (c *callProcessor) RegisterInternationalCall(duration uint) {
+	c.seconds.totalInternationalSeconds += duration
 }
 
 // Generate generates an invoice for a given user with calls.
@@ -271,11 +333,4 @@ func Generate(
 		TotalInternationalSeconds: totalSeconds.totalInternationalSeconds,
 		InvoiceTotal:              totalAmount,
 	}, nil
-}
-
-func shouldSkipCall(call Call, userPhoneNumber string, billingPeriod timeutil.Period) bool {
-	isOutsideBillingPeriod := !billingPeriod.Contains(call.Date)
-	madeByOtherUser := userPhoneNumber != call.SourcePhone
-
-	return isOutsideBillingPeriod || madeByOtherUser
 }
