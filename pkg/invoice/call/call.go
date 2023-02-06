@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"invoice-generator/pkg/user"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -56,8 +57,17 @@ func (c Call) Type(friends []user.PhoneNumber) Type {
 }
 
 func (c Call) baseType() Type {
-	if c.isNational() {
+	sourceCountry := getCountryCode(c.SourcePhone)
+	destinationCountry := getCountryCode(c.DestinationPhone)
+
+	if sourceCountry == destinationCountry {
 		return NationalCall{}
+	}
+
+	// Nota: Asumo que los códigos interplanetarios comienzan con 0
+	isToOtherPlanet := strings.HasPrefix(destinationCountry, "0")
+	if isToOtherPlanet {
+		return InterplanetaryCall{durationSecs: c.Duration}
 	}
 
 	return InternationalCall{durationSecs: c.Duration}
@@ -74,15 +84,6 @@ func (c Call) isFriend(friends []user.PhoneNumber) bool {
 	return false
 }
 
-// isNational returns whether the call was made to the same country (by
-// comparing source and destination country codes)
-func (c Call) isNational() bool {
-	sourceCountry := getCountryCode(c.SourcePhone)
-	destinationCountry := getCountryCode(c.DestinationPhone)
-
-	return sourceCountry == destinationCountry
-}
-
 // destinationCountryCode assumes that the phone number has a valid format,
 //	+ (2 digit country) (11 digit number)
 // For example,
@@ -96,6 +97,7 @@ type Characteristic uint
 
 const (
 	CharacteristicToFriend Characteristic = iota + 1
+	CharacteristicInternational
 )
 
 type Type interface {
@@ -114,6 +116,21 @@ type DurationRegisterer interface {
 	RegisterFriendCall(uint)
 	RegisterNationalCall(uint)
 	RegisterInternationalCall(uint)
+	RegisterInterplanetaryCall(uint)
+}
+
+type InterplanetaryCall struct {
+	durationSecs uint
+}
+
+func (c InterplanetaryCall) BaseCost() float64 {
+	return float64(c.durationSecs) * 10
+}
+
+func (c InterplanetaryCall) HasCharacteristic(_ Characteristic) bool { return false }
+
+func (c InterplanetaryCall) RegisterDuration(duration uint, registerer DurationRegisterer) {
+	registerer.RegisterInterplanetaryCall(duration)
 }
 
 type InternationalCall struct {

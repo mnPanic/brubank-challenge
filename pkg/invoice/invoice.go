@@ -8,12 +8,13 @@ import (
 )
 
 type Invoice struct {
-	User                      InvoiceUser   `json:"user"`
-	Calls                     []InvoiceCall `json:"calls"`
-	TotalInternationalSeconds uint          `json:"total_international_seconds"`
-	TotalNationalSeconds      uint          `json:"total_national_seconds"`
-	TotalFriendsSeconds       uint          `json:"total_friends_seconds"`
-	InvoiceTotal              float64       `json:"total"`
+	User                       InvoiceUser   `json:"user"`
+	Calls                      []InvoiceCall `json:"calls"`
+	TotalInternationalSeconds  uint          `json:"total_international_seconds"`
+	TotalNationalSeconds       uint          `json:"total_national_seconds"`
+	TotalFriendsSeconds        uint          `json:"total_friends_seconds"`
+	TotalInterplanetarySeconds uint          `json:"total_interplanetary_seconds"`
+	InvoiceTotal               float64       `json:"total"`
 }
 
 type InvoiceUser struct {
@@ -49,6 +50,8 @@ func Generate(
 
 	callProcessor := call.NewProcessor(usr, billingPeriod, []call.Promotion{
 		call.NewPromotionFreeCallsToFriends(usr),
+		// Nota: Agregada después de friends para que tenga precedencia.
+		call.NewPromotionInternationalCallsToMercosur(usr),
 	})
 
 	var invoiceCalls []InvoiceCall
@@ -74,10 +77,11 @@ func Generate(
 			Name:    usr.Name,
 			Phone:   string(usr.Phone),
 		},
-		Calls:                     invoiceCalls,
-		TotalFriendsSeconds:       totalSeconds.TotalFriendsSeconds,
-		TotalNationalSeconds:      totalSeconds.TotalNationalSeconds,
-		TotalInternationalSeconds: totalSeconds.TotalInternationalSeconds,
-		InvoiceTotal:              totalAmount,
+		Calls:                      invoiceCalls,
+		TotalFriendsSeconds:        totalSeconds.TotalFriendsSeconds,
+		TotalNationalSeconds:       totalSeconds.TotalNationalSeconds,
+		TotalInternationalSeconds:  totalSeconds.TotalInternationalSeconds,
+		TotalInterplanetarySeconds: totalSeconds.TotalInterplanetarySeconds,
+		InvoiceTotal:               totalAmount,
 	}, nil
 }
